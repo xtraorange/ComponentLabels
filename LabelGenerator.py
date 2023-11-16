@@ -7,10 +7,14 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont, TTFError
 from reportlab.lib.colors import black, toColor, HexColor, gray
 
-import math
+
+from ResistorValue import ResistorValue
+from PaperConfig import PaperConfig, AVERY_5260, AVERY_L7157, EJ_RANGE_24
+from StickerRect import StickerRect
+
 import sys
 
-from typing import Tuple, Union, Optional, List
+from typing import Union, Optional, List
 
 ResistorList = List[Union[Optional[float], List[Optional[float]]]]
 
@@ -45,179 +49,6 @@ else:
         exit(1)
 
 
-class PaperConfig:
-    def __init__(
-        self,
-        paper_name: str,
-        pagesize: Tuple[float, float],
-        sticker_width: float,
-        sticker_height: float,
-        sticker_corner_radius: float,
-        left_margin: float,
-        top_margin: float,
-        horizontal_stride: float,
-        vertical_stride: float,
-        num_stickers_horizontal: int,
-        num_stickers_vertical: int,
-    ) -> None:
-        self.paper_name = paper_name
-        self.pagesize = pagesize
-        self.sticker_width = sticker_width
-        self.sticker_height = sticker_height
-        self.sticker_corner_radius = sticker_corner_radius
-        self.left_margin = left_margin
-        self.top_margin = top_margin
-        self.horizontal_stride = horizontal_stride
-        self.vertical_stride = vertical_stride
-        self.num_stickers_horizontal = num_stickers_horizontal
-        self.num_stickers_vertical = num_stickers_vertical
-
-
-AVERY_5260 = PaperConfig(
-    paper_name="Avery 5260",
-    pagesize=LETTER,
-    sticker_width=(2 + 5/8) * inch,
-    sticker_height=1 * inch,
-    sticker_corner_radius=0.1 * inch,
-    left_margin=3/16 * inch,
-    top_margin=0.5 * inch,
-    horizontal_stride=(2 + 6/8) * inch,
-    vertical_stride=1 * inch,
-    num_stickers_horizontal=3,
-    num_stickers_vertical=10,
-)
-
-
-AVERY_L7157 = PaperConfig(
-    paper_name="Avery L7157",
-    pagesize=A4,
-    sticker_width=64 * mm,
-    sticker_height=24.3 * mm,
-    sticker_corner_radius=3 * mm,
-    left_margin=6.4 * mm,
-    top_margin=14.1 * mm,
-    horizontal_stride=66.552 * mm,
-    vertical_stride=24.3 * mm,
-    num_stickers_horizontal=3,
-    num_stickers_vertical=11,
-)
-
-
-EJ_RANGE_24 = PaperConfig(
-    paper_name="EJRange 24",
-    pagesize=A4,
-    sticker_width=63.5 * mm,
-    sticker_height=33.9 * mm,
-    sticker_corner_radius=2 * mm,
-    left_margin=6.5 * mm,
-    top_margin=13.2 * mm,
-    horizontal_stride=66.45 * mm,
-    vertical_stride=33.9 * mm,
-    num_stickers_horizontal=3,
-    num_stickers_vertical=8,
-)
-
-
-class StickerRect:
-    def __init__(self, c: Canvas, layout: PaperConfig, row: int, column: int, mirror: bool):
-        self.left = layout.left_margin + layout.horizontal_stride * column
-        self.bottom = layout.pagesize[1] - (
-            layout.sticker_height + layout.top_margin + layout.vertical_stride * row
-        )
-        self.width = layout.sticker_width
-        self.height = layout.sticker_height
-        self.corner = layout.sticker_corner_radius
-
-        self._mirror = mirror
-        self._c = c
-
-    def __enter__(self) -> "StickerRect":
-
-        if self._mirror:
-            pagewidth = self._c._pagesize[0]
-            pageheight = self._c._pagesize[1]
-            self._c.saveState()
-            self._c.translate(pagewidth, pageheight)
-            self._c.rotate(180)
-            self.left = pagewidth - self.left - self.width
-            self.bottom = pageheight - self.bottom - self.height
-
-        return self
-
-    def __exit__(self, _type: object, _value: object, _traceback: object) -> None:
-        if self._mirror:
-            self._c.restoreState()
-
-
-class ResistorValue:
-    def __init__(self, ohms: float):
-        ohms_exp = 0
-        ohms_val = 0
-
-        if ohms != 0:
-            # Fixed-point value with 2 decimals precision
-            ohms_exp = math.floor(math.log10(ohms))
-            ohms_val = round(ohms / math.pow(10, ohms_exp - 2))
-
-            while ohms_val >= 1000:
-                ohms_exp += 1
-                ohms_val //= 10
-
-        self.ohms_val = ohms_val
-        self.ohms_exp = ohms_exp
-
-        # print(self.ohms_val, self.ohms_exp, self.format_value(), self.get_value())
-
-    def get_value(self) -> float:
-        return self.ohms_val * math.pow(10, self.ohms_exp - 2)
-
-    def get_prefix(self) -> str:
-        if self.ohms_exp >= 12:
-            return "T"
-        if self.ohms_exp >= 9:
-            return "G"
-        if self.ohms_exp >= 6:
-            return "M"
-        if self.ohms_exp >= 3:
-            return "k"
-        if self.ohms_exp >= 0:
-            return ""
-        if self.ohms_exp >= -3:
-            return "m"
-        if self.ohms_exp >= -6:
-            return "\u03BC"
-        return "n"
-
-    def get_prefixed_number(self) -> str:
-        if self.ohms_exp % 3 == 0:
-            if self.ohms_val % 100 == 0:
-                return str(self.ohms_val // 100)
-            elif self.ohms_val % 10 == 0:
-                return str(self.ohms_val // 100) + "." + str((self.ohms_val % 100) // 10)
-            else:
-                return str(self.ohms_val // 100) + "." + str(self.ohms_val % 100)
-        elif self.ohms_exp % 3 == 1:
-            if self.ohms_val % 10 == 0:
-                return str(self.ohms_val // 10)
-            else:
-                return str(self.ohms_val // 10) + "." + str(self.ohms_val % 10)
-        else:
-            return str(self.ohms_val)
-
-    def format_value(self) -> str:
-
-        if self.ohms_exp < 0:
-            rendered_num = str(self.ohms_val)
-            while rendered_num[-1] == "0":
-                rendered_num = rendered_num[:-1]
-            if self.ohms_exp == -1:
-                return "0." + rendered_num
-            if self.ohms_exp == -2:
-                return "0.0" + rendered_num
-            if self.ohms_exp == -3:
-                return "0.00" + rendered_num
-
-        return self.get_prefixed_number() + self.get_prefix()
 
 
 def resistor_color_table(num: int) -> HexColor:
