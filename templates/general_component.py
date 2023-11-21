@@ -1,7 +1,7 @@
 from Logger import Logger
 from components import Component
 from .template import Template
-from elements import TextElement
+from elements import TextElement, QRCodeElement
 
 class GeneralComponent(Template):
     def __init__(self, component:Component):
@@ -13,5 +13,5 @@ class GeneralComponent(Template):
         self.grid_y_count = 8
 
     def elements(self):
-        self.add_grid_element(TextElement("Ajasdfadasdasdf fsasfd `asdfasdf 1a1sdfasdf 2asdfasdfadsf", wrap=True, auto_truncate=True, font_size='auto'), 1, 1, 19, 6)
-    
+        self.add_grid_element(TextElement("A", wrap=True, auto_truncate=True, font_size=15), 1, 1, 19, 6)
+        #self.add_grid_element(QRCodeElement("https://www.reportlab.com", 10), 1, 1, 5, 6)

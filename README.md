@@ -1,31 +1,42 @@
-# ResistorLabels
+# ComponentLabels
 
-This script generates labels for resistor zip bags.
+## Overview
+ComponentLabels is an enhanced Python script originally designed for generating resistor labels. It has now evolved to create labels for a variety of electronic components, offering customizable options for different types and sizes of labels.
 
-It is meant for AVERY 5260 or AVERY L7157 labels and 7x10cm (3"x4") zip bags.
+## Features
+- Generates labels for various electronic components, including resistors, capacitors, and more.
+- Customizable label layouts for different label sheets and component sizes.
+- Supports various coding schemes including color codes, SMD codes, etc.
 
-The generated labels include:
+## Requirements
+- Python 3.x
+- `reportlab` library for PDF generation
 
--   Resistor value
--   4- and 5-band color codes
--   3- and 4-digit smd codes
--   EIA-96 smd code
+## Installation
+1. Clone the repository: `git clone https://github.com/xtraorange/ComponentLabels.git`
+2. Install the required Python libraries: `pip install -r requirements.txt`
 
-<img src="Example.svg">
+## Usage
+- To generate labels, modify the `main()` function in `LabelGenerator.py` with your component values.
+- Run `python LabelGenerator.py` to create the PDF file.
 
-# Usage
+### Customizing Label Layout
+- Detailed steps on how to customize label layouts for different components.
 
--   Install python3
--   Install the python3 library `reportlab`. This library is used to do the actual PDF generation.
--   Add your own required resistor values in `main()` of `LabelGenerator.py`.
--   If using Avery L7157, change the `layout` value in `main()` to `AVERY_L7157`.
--   Run the script `LabelGenerator.py`!
+## Example Labels
+- (Insert Screenshot of Generated Resistor Label)
+- (Insert Screenshot of Generated Capacitor Label)
+- More examples showcasing various component labels.
 
-It will now generate a `ResistorLabels.pdf` that can be used to print onto AVERY 5260/L7157.
+## Contributing
+Contributions are welcome! Please read our contributing guidelines for how to propose changes.
 
-# More Details
+## License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-This is based on an idea from Zach Poff.
+## Acknowledgments
+- Original project forked from [Finomnis/ResistorLabels](https://github.com/Finomnis/ResistorLabels).
+- The original project was based on an idea from Zach Poff.
 
 For more details on how to use these labels, visit his website:
 

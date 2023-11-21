@@ -5,22 +5,34 @@ from reportlab.lib.units import inch
 from Logger import Logger
 
 class TextElement:
-    def __init__(self, text, wrap=True, auto_truncate=True, font_size=None, line_gap=2, font_color=black, font_name=None):
+    def __init__(self, text, wrap=True, auto_truncate=True, font_size=None, font_color=black, font_name=None, line_gap=2, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.text = text
         self.wrap = wrap
         self.font_size = font_size  # Can be a specific size or 'auto'
         self.font_color = font_color
         self.font_name = font_name
         self.line_gap = line_gap
+
         self.auto_truncate = auto_truncate
         self.descender_spacer = .25
 
 
-    def render(self, canvas, width, height):
+    def render(self, canvas, width, height, horizontal_align, vertical_align):
         self.max_width = width
         self.max_height = height
         self.font_name = self.font_name if self.font_name else canvas.font_name
         self.font_color = self.font_color if self.font_color else canvas.fill_color
+
+        if horizontal_align is None:
+            self.horizontal_align = "left"
+        else:
+            self.horizontal_align = horizontal_align
+
+        if vertical_align is None:
+            self.vertical_align = "top"
+        else:
+            self.vertical_align = vertical_align
 
         canvas.save_style_state()
         canvas.set_font_name(self.font_name)
@@ -107,120 +119,65 @@ class TextElement:
             truncated_lines.append(line)
         return truncated_lines
 
+
     def _draw_lines(self, canvas, lines):
         Logger.debug("Drawing lines")
-        y_position = self.max_height
-        line_height = self.font_size / 72 * inch  # Convert point size to inches
+        total_text_height = len(lines) * (self.font_size / 72 * inch + self.line_gap) - self.line_gap
 
-        descender_space = self.font_size * self.descender_spacer  
+        if self.vertical_align == "bottom":
+            y_position = total_text_height  # Bottom-aligned
+        elif self.vertical_align == "middle":
+            y_position = (self.max_height + total_text_height) / 2  # Middle-aligned
+        else:
+            y_position = self.max_height  # Default to top-aligned if alignment is not recognized
 
+        descender_space = self.font_size * self.descender_spacer
         y_position += descender_space
 
         for line in lines:
-            if y_position - line_height < 0 and self.auto_truncate:
+            if y_position - self.font_size / 72 * inch < 0 and self.auto_truncate:
                 break  # Stop drawing if we run out of vertical space
-            y_position -= line_height
-            canvas.drawString(0, y_position, line)
+
+            text_width = canvas.stringWidth(line, self.font_name, self.font_size)
+
+            if self.horizontal_align == "left":
+                x_position = 0  # Left-aligned
+            elif self.horizontal_align == "center":
+                x_position = (self.max_width - text_width) / 2  # Center-aligned
+            elif self.horizontal_align == "right":
+                x_position = self.max_width - text_width  # Right-aligned
+            else:
+                x_position = 0  # Default to left-aligned if alignment is not recognized
+
+            y_position -= self.font_size / 72 * inch
+            canvas.drawString(x_position, y_position, line)
             y_position -= self.line_gap
 
 
-
-
-
-
-    # def render(self, canvas, width, height):
-    #     self.max_width = width
-    #     self.max_height = height
-    #     self.font_name = self.font_name if self.font_name else canvas.font_name
-    #     self.font_color = self.font_color if self.font_color else canvas.fill_color
-    #     self.font_size = self.font_size if self.font_size else canvas.font_size
-
-    #     canvas.save_style_state()
-        
-    #     canvas.set_font_name(self.font_name)
-    #     canvas.set_fill_color(self.font_color)
-        
-    #     Logger.debug("Rendering text element using font %s" % self.font_name)
-
-    #     if self.font_size == 'auto':
-    #         self._auto_resize_text(canvas)
-
-    #     canvas.set_font_size(self.font_size)
-        
-    #     lines = self._reflow_text(canvas, self.text.split()) if self.wrap else [self.text]
-    #     if self.auto_truncate:
-    #         lines = [line if canvas.stringWidth(line, self.font_name, self.font_size) <= self.max_width else line[:self.max_chars_in_line(canvas, line)] for line in lines]
-
-    #     self._draw_lines(canvas, lines)
-
-    #     canvas.restore_style_state()
-
-    # def _auto_resize_text(self, canvas):
-    #     min_font_size = 1  # Minimum possible font size
-    #     max_font_size = 200  # A reasonable upper limit for font size
-    #     last_fitting_size = min_font_size
-
-    #     while min_font_size <= max_font_size:
-    #         mid_font_size = (min_font_size + max_font_size) // 2
-    #         Logger.debug(f"Trying font size: {mid_font_size}")
-
-    #         canvas.setFont(self.font_name, mid_font_size)
-    #         estimated_line_height = mid_font_size * (1 / 72) * inch
-
-    #         if self.wrap:
-    #             lines = self._reflow_text(canvas, self.text.split(), mid_font_size)
-    #             total_text_height = len(lines) * estimated_line_height + (len(lines) - 1) * self.line_gap
-    #         else:
-    #             lines = [self.text]
-    #             total_text_height = estimated_line_height
-
-    #         fits_in_width = all(canvas.stringWidth(line, self.font_name, mid_font_size) <= self.max_width for line in lines)
-    #         fits_in_height = total_text_height <= self.max_height
-
-    #         if fits_in_width and fits_in_height:
-    #             last_fitting_size = mid_font_size
-    #             min_font_size = mid_font_size + 1
-    #         else:
-    #             max_font_size = mid_font_size - 1
-
-    #     Logger.debug(f"Final fitting font size: {last_fitting_size}")
-    #     self.font_size = last_fitting_size
-
-
-
-
-
-    # def _reflow_text(self, canvas, words, font_size=None):
-    #     if font_size is None:
-    #         font_size = self.font_size
-
-    #     Logger.debug(f"Reflowing text with font size: {font_size}")
-    #     lines, line = [], ""
-    #     for word in words:
-    #         test_line = line + " " + word if line else word
-    #         if canvas.stringWidth(test_line, self.font_name, font_size) <= self.max_width:
-    #             line = test_line
-    #         else:
-    #             if line: 
-    #                 lines.append(line)
-    #             line = word
-    #     if line: 
-    #         lines.append(line)
-    #     return lines
-
-
     # def _draw_lines(self, canvas, lines):
-    #     Logger.debug(f"Drawing lines: {lines}")
-    #     estimated_line_height = self.font_size * (1 / 72) * inch
-    #     y_position = self.max_height - estimated_line_height
+    #     Logger.debug("Drawing lines")
+    #     y_position = self.max_height
+    #     line_height = self.font_size / 72 * inch  # Convert point size to inches
+
+    #     descender_space = self.font_size * self.descender_spacer  
+
+    #     y_position += descender_space
+
     #     for line in lines:
-    #         canvas.drawString(0, y_position, line)
-    #         y_position -= (estimated_line_height + self.line_gap)
+    #         if y_position - line_height < 0 and self.auto_truncate:
+    #             break  # Stop drawing if we run out of vertical space
 
+    #         text_width = canvas.stringWidth(line, self.font_name, self.font_size)
 
-    # def _max_chars_in_line(self, canvas, text):
-    #     Logger.debug(f"Calculating max chars in line for text: '{text}'")
-    #     for i in range(1, len(text) + 1):
-    #         if canvas.stringWidth(text[:i], self.font_name, self.font_size) > self.max_width:
-    #             return i - 1
-    #     return len(text)
+    #         if self.horizontal_align == "left":
+    #             x_position = 0  # Left-aligned
+    #         elif self.horizontal_align == "center":
+    #             x_position = (self.max_width - text_width) / 2  # Center-aligned
+    #         elif self.horizontal_align == "right":
+    #             x_position = self.max_width - text_width  # Right-aligned
+    #         else:
+    #             x_position = 0  # Default to left-aligned if alignment is not recognized
+
+    #         y_position -= line_height
+    #         canvas.drawString(x_position, y_position, line)
+    #         y_position -= self.line_gap
