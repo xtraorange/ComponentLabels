@@ -1,4 +1,4 @@
-from Canvas import Canvas
+from .canvas import Canvas
 from Logger import Logger
 import importlib
 from reportlab.lib.colors import black
@@ -110,6 +110,6 @@ class Document:
 
         if template is not None:
             # Render the label using the template
-            template.render(self.canvas, self.layout.sticker_width, self.layout.sticker_height)
+            template.render(self.canvas, self.canvas.current_width, self.canvas.current_height, horizontal_align="center", vertical_align="center")
 
         self.canvas.restore_canvas()

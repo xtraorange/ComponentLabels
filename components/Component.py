@@ -7,12 +7,16 @@ class Component():
     LABEL_CLASS = "Label"  # Default label class
     UNIT = ""             # Unit of the component
     BASE_UNIT_PREFIX = ""  # Base unit prefix of the component (what values are typically based on)
+    NAME = "Component"             # Name of the component
     value = None         # Value of the component
     coefficient = None   # Coefficient of the component
     exponent = None      # Exponent of the component
     unit_prefix = ""     # Unit prefix of the component
     decimal_precision = 2  # Decimal precision of the component
     schematic_symbol = None  # Schematic symbol of the component
+
+    _title = None
+    _formatted_value = None
 
     UNIT_PREFIXES = {
         "a": -18,  # atto
@@ -40,7 +44,41 @@ class Component():
             self.value = value
         if(self.coefficient is None or self.exponent is None or self.unit_prefix is None):
             self.set_value_attributes()
+        
+        Logger.debug(f"Component: {self.NAME} - {self.value} - {self.coefficient} - {self.exponent} - {self.unit_prefix}")
 
+
+
+    @property
+    def title(self):
+        if self._title is None:
+            return self.formated_value
+        else:
+            return self._title
+    
+    @title.setter
+    def title(self, value):
+        self._title = value
+
+
+    @property
+    def formated_value(self):
+        if self._formatted_value is None:
+            coefficient_formatted_value = "{:g}".format(self.coefficient)
+            return coefficient_formatted_value + " " + self.unit_prefix + self.UNIT
+        else:
+            return self._formatted_value
+
+    @formated_value.setter
+    def formated_value(self, value):
+        self._formatted_value = value
+
+
+    @property
+    def formatted_coefficient(self):
+        return "{:g}".format(self.coefficient)
+
+        
 
     def _parse_value(self, value_str):
         # Remove leading and trailing spaces
@@ -101,9 +139,3 @@ class Component():
         Logger.warning("No valid unit prefix found.")
         return ""
 
-
-
-    def print_attributes(self):
-        coefficient_formatted_value = "{:g}".format(self.coefficient)
-        print(f"Value: {self.value}, Coefficient: {coefficient_formatted_value}, "
-              f"Exponent: {self.exponent}, Unit Prefix: {self.unit_prefix}")

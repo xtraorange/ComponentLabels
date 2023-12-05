@@ -1,5 +1,5 @@
 class Logger:
-    log_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    LOG_LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
     level = "DEBUG"
 
     @staticmethod
@@ -24,8 +24,8 @@ class Logger:
 
     @staticmethod
     def log(message, log_level="INFO"):
-        if log_level not in Logger.log_levels:
+        if log_level not in Logger.LOG_LEVELS:
             raise ValueError(f"Invalid log level: {log_level}")
 
-        if Logger.log_levels.index(log_level) >= Logger.log_levels.index(Logger.level):
+        if Logger.LOG_LEVELS.index(log_level) >= Logger.LOG_LEVELS.index(Logger.level):
             print(f"[{log_level}] - {message}")
