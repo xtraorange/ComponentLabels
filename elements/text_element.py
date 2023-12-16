@@ -4,24 +4,28 @@ from reportlab.lib.units import inch
 from Logger import Logger
 
 class TextElement(Element):
-    def __init__(self, text, wrap=True, auto_truncate=True, font_size=None, font_color="black", font_name=None, line_gap=2, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    _attributes = {
+        'text': (str, ""),
+        'wrap': (bool, True),
+        'auto_truncate': (bool, True),
+        'font_size': (float, None),
+        'font_color': (str, None),
+        'font_name': (str, None),
+        'line_gap': (float, 2),
+        'descender_spacer': (float, .25),
+
+    }
+
+    def __init__(self, text):
+        super().__init__()
         self.text = str(text)
-        self.wrap = wrap
-        self.font_size = font_size  # Can be a specific size or 'auto'
-        self.font_color = font_color
-        self.font_name = font_name
-        self.line_gap = line_gap
-        self.auto_truncate = auto_truncate
-        self.descender_spacer = .25
 
 
-    def render(self, canvas, width, height, horizontal_align, vertical_align):
-        super().render(canvas, width, height, horizontal_align, vertical_align)
+    def _render_self(self, canvas):
         Logger.debug(f"Rendering text element: {self.text}")
         
-        self.width = width
-        self.height = height
+        self.width = canvas.width
+        self.height = canvas.height
 
 
         self.font_name = self.font_name if self.font_name else canvas.font_name
@@ -47,7 +51,7 @@ class TextElement(Element):
 
         Logger.debug(f"Drawing Lines: {lines}")
 
-        self._draw_lines(canvas, lines, width, height)
+        self._draw_lines(canvas, lines, canvas.width, canvas.height)
         canvas.restore_style_state()
 
     def _find_max_font_size_that_fits(self, canvas):

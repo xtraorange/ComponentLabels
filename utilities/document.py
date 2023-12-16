@@ -1,20 +1,31 @@
 from .canvas import Canvas
 from Logger import Logger
+from .typed_attributes import TypedAttributes
 import importlib
 from reportlab.lib.colors import black
 
-from fonts import FontManager
 
 
-class Document:
-    def __init__(self, layout_name, file_name, default_font = "Helvetica", default_font_size = 12, label_outlines = False, fill_page = True):
+class Document (TypedAttributes):
+    _attributes = {
+        'file_name': (str, "Labels.pdf"),
+        'sheet_layout': (str, "Avery_5260"),
+        'default_font': (str, "Helvetica"),
+        'default_font_size': (int, 12),
+        'label_outlines': (bool, False),
+        'fill_page': (bool, True),
+    }
+     
+    def __init__(self, layout_name, file_name):
         self.layout = self._load_layout(layout_name)
         self.labels = []
         self.canvas = Canvas(file_name, pagesize=self.layout.pagesize)
-        self.label_outlines = label_outlines
-        self.fill_page = fill_page
-        self.default_font = default_font
-        self.default_size = default_font_size
+
+
+    def configure(self, **kwargs):
+        return self.set_attribute(**kwargs)
+
+
 
     @staticmethod
     def _load_layout(layout_name):
@@ -57,9 +68,9 @@ class Document:
     def render(self):
         Logger.info(f"Rendering document with layout '{self.layout.paper_name}' and size '{self.layout.pagesize}'")
 
-        Logger.info(f"Setting font to '{self.default_font}' with size '{self.default_size}'")
+        Logger.info(f"Setting font to '{self.default_font}' with size '{self.default_font_size}'")
         self.canvas.set_font_name(self.default_font)
-        self.canvas.set_font_size(self.default_size)
+        self.canvas.set_font_size(self.default_font_size)
 
 
         labels_per_page = self.layout.num_stickers_vertical * self.layout.num_stickers_horizontal
@@ -110,6 +121,7 @@ class Document:
 
         if template is not None:
             # Render the label using the template
-            template.render(self.canvas, self.canvas.current_width, self.canvas.current_height, horizontal_align="center", vertical_align="center")
+            template.set_position(0, 0).set_size(self.layout.sticker_width, self.layout.sticker_height)
+            template.render(self.canvas)
 
         self.canvas.restore_canvas()

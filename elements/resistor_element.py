@@ -6,6 +6,17 @@ from components import Resistor
 from .element import Element
 
 class ResistorElement(Element):
+    _attributes = {
+        'resistor_value': (int, 0),
+        'body_color': (str, "#92cce3"),
+        'band_count': (int, 5),
+        'tolerance_percentage': (str, "any"),
+        'temperature_coefficient': (str, "any"),
+        'unrepresentable_behavior': (str, None),
+        # 'significant_digit_count': (int, None),
+
+    }
+
     # Common resistor body colors
     BODY_COLORS = {
         "blue": "#92cce3",
@@ -16,19 +27,14 @@ class ResistorElement(Element):
     }
 
 
-    def __init__(self, resistor_value, body_color=BODY_COLORS["blue"], band_count = 5, unrepresentable_behavior = None,  tolerance_percentage = "any", temperature_coefficient = "any", *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, resistor_value):
+        super().__init__()
         self.resistor_value = resistor_value
-        self.body_color = body_color
-        self.band_count = band_count
-        self.tolerance_percentage = tolerance_percentage
-        self.temperature_coefficient = temperature_coefficient
-        self.unrepresentable_behavior = unrepresentable_behavior
 
 
 
-    def render(self, canvas, width, height, horizontal_align, vertical_align):
-        super().render(canvas, width, height, horizontal_align, vertical_align)
+
+    def _render_self(self, canvas):
 
         if not self._is_representable(self.resistor_value, self._significant_digit_count()) and self.unrepresentable_behavior is None:
             Logger.info(f"Resistor value {self.resistor_value} cannot be accurately represented with {self.band_count} bands.")
@@ -38,13 +44,13 @@ class ResistorElement(Element):
         aspect_ratio = 3.2
 
         # Calculate the maximum size of the resistor that fits in the available space
-        resistor_width = min(width, height * aspect_ratio)
+        resistor_width = min(canvas.width, canvas.height * aspect_ratio)
         resistor_height = resistor_width / aspect_ratio
-        Logger.debug(f"Resistor width: {resistor_width}, width: {width}, height: {height}")
+        Logger.debug(f"Resistor width: {resistor_width}, width: {canvas.width}, height: {canvas.height}")
 
         # Calculate the position to center the resistor
-        x = (width - resistor_width) / 2
-        y = (height - resistor_height) / 2
+        x = (canvas.width - resistor_width) / 2
+        y = (canvas.height - resistor_height) / 2
 
         
 
@@ -56,7 +62,7 @@ class ResistorElement(Element):
         corner_radius = height / 4
 
         canvas.create_sub_canvas(x, y, width, height, 'rounded_rectangle', corner_radius, draw_outline = True, outline_color = "#000000")
-        canvas.linearGradient(canvas.current_width/2, canvas.current_height, canvas.current_width/2, 0, (toColor("#ffffff"), toColor(self.body_color)))
+        canvas.linearGradient(canvas.width/2, canvas.height, canvas.width/2, 0, (toColor("#ffffff"), toColor(self.body_color)))
 
         if self._is_representable(self.resistor_value, self._significant_digit_count()):
             bands = self._generate_bands_table();
@@ -67,13 +73,13 @@ class ResistorElement(Element):
                 canvas.setStrokeColor(toColor("black"))
                 canvas.setLineWidth(.75)
 
-                height_offset = canvas.current_height/15 # to adjust for the oval not allowing the x to hit the right spot
+                height_offset = canvas.height/15 # to adjust for the oval not allowing the x to hit the right spot
 
-                canvas.line(0, height_offset, canvas.current_width, canvas.current_height - height_offset)
-                canvas.line(0, canvas.current_height - height_offset, canvas.current_width, height_offset)
+                canvas.line(0, height_offset, canvas.width, canvas.height - height_offset)
+                canvas.line(0, canvas.height - height_offset, canvas.width, height_offset)
 
         # Render the background, color codes, and additional details
-        self._draw_resistor_color_codes(canvas, canvas.current_width, canvas.current_height, bands)
+        self._draw_resistor_color_codes(canvas, canvas.width, canvas.height, bands)
         # self._draw_resistor_color_codes(canvas, x, y, resistor_width, resistor_height)
         # self._draw_additional_resistor_details(canvas, x, y, resistor_width, resistor_height)
         canvas.restore_canvas()

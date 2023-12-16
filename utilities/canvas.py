@@ -10,11 +10,11 @@ class Canvas(ReportLabCanvas):
         self.font_size = 12
         self.stroke_color = black
         self.fill_color = black
-        self.current_width = self._pagesize[0]
-        self.current_height = self._pagesize[1]
+        self.width = self._pagesize[0]
+        self.height = self._pagesize[1]
         self.state_stack = []  # Stack for saving states
         self.sub_canvas_stack = []  # Stack for sub-canvases
-        self.development_mode = True
+        self.development_mode = False
 
 
     def set_font_name(self, font_name):
@@ -81,7 +81,7 @@ class Canvas(ReportLabCanvas):
             self.setFillColor(self.fill_color)
             self.setStrokeColor(self.stroke_color)
 
-    def create_sub_canvas(self, x, y, width, height, shape="rectangle", radius=0, allow_overflow=False, rotate=None, draw_outline = False, outline_color = "#FF0000", outline_width = .5, background_color = None):
+    def create_sub_canvas(self, x, y, width, height, shape="rectangle", radius=0, allow_overflow=False, rotation_angle=None, draw_outline = False, outline_color = "#FF0000", outline_width = .5, background_color = None):
         Logger.info(f"Creating sub-canvas at position ({x}, {y}) with dimensions ({width}, {height})")
         # Core functionality for creating a sub-canvas
 
@@ -91,10 +91,10 @@ class Canvas(ReportLabCanvas):
             draw_outline = True
             if outline_color is None:
                 outline_color = "#FF0000"
-            if outline_width is None or outline_width < .5:
+            if outline_width is None or outline_width < 0.5:
                 outline_width = .5
         self.save_style_state()
-        self.sub_canvas_stack.append((self.current_width, self.current_height))
+        self.sub_canvas_stack.append((self.width, self.height))
 
 
 
@@ -113,8 +113,8 @@ class Canvas(ReportLabCanvas):
         # Set up the sub-canvas
         self.saveState()
         self.translate(x, y)
-        if rotate is not None:
-            self.rotate(rotate)
+        if rotation_angle is not None:
+            self.rotate(rotation_angle)
 
         if radius > 0:
             self.setLineWidth(radius)  # Set the line width to the radius for rounded corners
@@ -130,7 +130,7 @@ class Canvas(ReportLabCanvas):
             self.drawPath(path, stroke=0, fill=1)  # Draw the background
 
         
-        self.current_width, self.current_height = width, height
+        self.width, self.height = width, height
         
     def _create_path(self, shape, x, y, width, height, radius=0):
         path = self.beginPath()  # Shared path initialization
@@ -146,5 +146,5 @@ class Canvas(ReportLabCanvas):
     def restore_canvas(self):
         if self.sub_canvas_stack:
             self.restoreState()  # Restore the state of the sub-canvas
-            self.current_width, self.current_height = self.sub_canvas_stack.pop()
+            self.width, self.height = self.sub_canvas_stack.pop()
             self.restore_style_state()  # Restore saved font and color state
