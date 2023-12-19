@@ -1,6 +1,6 @@
 class Logger:
     LOG_LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-    level = "DEBUG"
+    level = "WARNING"
 
     @staticmethod
     def debug(message):

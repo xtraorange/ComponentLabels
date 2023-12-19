@@ -1,22 +1,21 @@
 # components/Component.pyUNIT
 from Logger import Logger
+from utilities import TypedAttributes
 import math
 import re
 
-class Component():
-    LABEL_CLASS = "Label"  # Default label class
-    UNIT = ""             # Unit of the component
-    BASE_UNIT_PREFIX = ""  # Base unit prefix of the component (what values are typically based on)
-    NAME = "Component"             # Name of the component
-    value = None         # Value of the component
-    coefficient = None   # Coefficient of the component
-    exponent = None      # Exponent of the component
-    unit_prefix = ""     # Unit prefix of the component
-    decimal_precision = 2  # Decimal precision of the component
-    schematic_symbol = None  # Schematic symbol of the component
-
-    _title = None
-    _formatted_value = None
+class Component(TypedAttributes):
+    _attributes = {
+        'value': (float, None),
+        'coefficient': (float, None),
+        'exponent': (int, None),
+        'unit_prefix': (str, ""),
+        'decimal_precision': (int, 3),
+        'schematic_symbol': (str, None),
+        'maintain_user_input': (bool, False),
+        '_title': (str, None),
+        '_formatted_value': (str, None),
+    }
 
     UNIT_PREFIXES = {
         "a": -18,  # atto
@@ -34,10 +33,8 @@ class Component():
     }
 
     def __init__(self, value=None):
-        self.coefficient = None
-        self.exponent = None
-        self.unit_prefix = None
-        self.schematic_symbol = None
+        super().__init__()
+
         if isinstance(value, str):
             self.value = self._parse_value(value)
         else:
@@ -76,7 +73,9 @@ class Component():
 
     @property
     def formatted_coefficient(self):
-        return "{:g}".format(self.coefficient)
+        formatted_value = "{:g}".format(self.coefficient)
+        return formatted_value.lstrip('0') if formatted_value != '0' else formatted_value
+
 
         
 
@@ -97,12 +96,16 @@ class Component():
         numeric_value = float(numeric_value)
         
         if unit in Component.UNIT_PREFIXES:
-            self.coefficient = numeric_value
-            self.exponent = Component.UNIT_PREFIXES[unit]
-            self.unit_prefix = unit
-            return numeric_value * (10 ** self.exponent)
+            if self.maintain_user_input:
+                self.coefficient = numeric_value
+                self.exponent = Component.UNIT_PREFIXES[unit]
+                self.unit_prefix = unit
+                return numeric_value * (10 ** self.exponent)
+            else:
+                return numeric_value * (10 ** Component.UNIT_PREFIXES[unit])
         else:
-            return numeric_value
+            raise ValueError(f"Invalid unit prefix: {unit}")
+            Logger.error(f"Invalid unit prefix: {unit}")
         
 
     def set_value_attributes(self):
@@ -118,7 +121,7 @@ class Component():
         initial_exponent = math.floor(math.log10(self.value))
         significant_figures = round( self.value  / math.pow(10, initial_exponent - ( self.decimal_precision - 1)))
         coefficient = significant_figures / math.pow(10, ( self.decimal_precision - 1 ))
-        print(f"initial_exponent: {initial_exponent}")
+
         if (initial_exponent < base_unit_exponent):
             self.exponent = math.ceil((initial_exponent + 1) / 3) * 3	
         else:
@@ -139,3 +142,25 @@ class Component():
         Logger.warning("No valid unit prefix found.")
         return ""
 
+
+    @staticmethod
+    def get_scientific_notation(value, significant_digits, digits_left_of_decimal = 1):
+        if value == 0:
+            return 0, 0
+
+        exponent = 0
+
+        # Adjust the value to have the desired number of digits to the left of the decimal
+        while value >= 10**digits_left_of_decimal:
+            value /= 10
+            exponent += 1
+        while value < 10**(digits_left_of_decimal - 1):
+            value *= 10
+            exponent -= 1
+
+        # Round to the desired number of significant digits
+        # Calculate the number of digits after the decimal for rounding
+        digits_after_decimal = significant_digits - digits_left_of_decimal
+        coefficient = round(value, digits_after_decimal)
+
+        return coefficient, exponent

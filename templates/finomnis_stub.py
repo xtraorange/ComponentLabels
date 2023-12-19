@@ -2,7 +2,7 @@ from components import Resistor
 from .template import Template
 from elements import TextElement, ResistorElement, LineElement
 
-class MartinStumpfStub(Template):
+class FinomnisStub(Template):
     _attributes = {
         'component': (Resistor, None),
     }

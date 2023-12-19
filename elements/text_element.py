@@ -18,7 +18,10 @@ class TextElement(Element):
 
     def __init__(self, text):
         super().__init__()
-        self.text = str(text)
+        if text is not None:
+            self.text = str(text)
+        else:
+            self.text = ""
 
 
     def _render_self(self, canvas):

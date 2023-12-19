@@ -7,7 +7,7 @@ from .element import Element
 
 class ResistorElement(Element):
     _attributes = {
-        'resistor_value': (int, 0),
+        'resistor_value': (float, 0),
         'body_color': (str, "#92cce3"),
         'band_count': (int, 5),
         'tolerance_percentage': (str, "any"),
@@ -26,6 +26,21 @@ class ResistorElement(Element):
         "grey": "#909090"
     }
 
+    BAND_TABLE = {
+        -2: {"hex": "#C0C0C0", "name": "silver", "metallic": True, "tolerance_percent": 10.0},
+        -1: {"hex": "#FFD700", "name": "gold",   "metallic": True, "tolerance_percent": 5.0},
+        0:  {"hex": "#000000", "name": "black",  "metallic": False, "tolerance_percent": 20.0, "temperature_coefficient": 250},
+        1:  {"hex": "#964B00", "name": "brown",  "metallic": False, "tolerance_percent": 1.0, "temperature_coefficient": 100},
+        2:  {"hex": "#FF3030", "name": "red",    "metallic": False, "tolerance_percent": 2.0, "temperature_coefficient": 50},
+        3:  {"hex": "#FFA500", "name": "orange", "metallic": False, "tolerance_percent": 3.0, "temperature_coefficient": 15},
+        4:  {"hex": "#FFFF00", "name": "yellow", "metallic": False, "tolerance_percent": 4.0, "temperature_coefficient": 25},
+        5:  {"hex": "#00FF00", "name": "green",  "metallic": False, "tolerance_percent": .5, "temperature_coefficient": 20},
+        6:  {"hex": "#0000FF", "name": "blue",   "metallic": False, "tolerance_percent": .25, "temperature_coefficient": 10},
+        7:  {"hex": "#C520F6", "name": "violet", "metallic": False, "tolerance_percent": .1, "temperature_coefficient": 5},
+        8:  {"hex": "#808080", "name": "grey",   "metallic": False, "tolerance_percent": .05, "temperature_coefficient": 1},
+        9:  {"hex": "#FFFFFF", "name": "white",  "metallic": False}
+    }
+
 
     def __init__(self, resistor_value):
         super().__init__()
@@ -36,39 +51,48 @@ class ResistorElement(Element):
 
     def _render_self(self, canvas):
 
-        if not self._is_representable(self.resistor_value, self._significant_digit_count()) and self.unrepresentable_behavior is None:
+        if not self._is_representable(self.resistor_value, self._significant_digit_count()):
             Logger.info(f"Resistor value {self.resistor_value} cannot be accurately represented with {self.band_count} bands.")
-
+            self._draw_resistor(canvas, [])
             return
+
+        bands = self._generate_bands_table()
         
+        #Empty bands if any are not set to none, wild, or a number in the range of the resistor color table
+        for band in bands:
+            if band is not None and band != "wildcard" and band not in ResistorElement.BAND_TABLE:
+                bands = []
+        
+
+
+        
+
+        self._draw_resistor(canvas, bands)
+
+
+
+    def _draw_resistor(self, canvas, bands):
+        if not bands and self.unrepresentable_behavior is None:
+            return
+
         aspect_ratio = 3.2
 
         # Calculate the maximum size of the resistor that fits in the available space
-        resistor_width = min(canvas.width, canvas.height * aspect_ratio)
-        resistor_height = resistor_width / aspect_ratio
-        Logger.debug(f"Resistor width: {resistor_width}, width: {canvas.width}, height: {canvas.height}")
+        width = min(canvas.width, canvas.height * aspect_ratio)
+        height = width / aspect_ratio
 
         # Calculate the position to center the resistor
-        x = (canvas.width - resistor_width) / 2
-        y = (canvas.height - resistor_height) / 2
-
-        
-
-        self._draw_resistor(canvas, x, y, resistor_width, resistor_height)
+        x = (canvas.width - width) / 2
+        y = (canvas.height - height) / 2
 
 
-
-    def _draw_resistor(self, canvas, x, y, width, height):
         corner_radius = height / 4
 
         canvas.create_sub_canvas(x, y, width, height, 'rounded_rectangle', corner_radius, draw_outline = True, outline_color = "#000000")
         canvas.linearGradient(canvas.width/2, canvas.height, canvas.width/2, 0, (toColor("#ffffff"), toColor(self.body_color)))
 
-        if self._is_representable(self.resistor_value, self._significant_digit_count()):
-            bands = self._generate_bands_table();
-        else:
-            bands = []
-
+        # if bands is empty, call draw unpresentable resistor method
+        if not bands:
             if self.unrepresentable_behavior == "draw_x":
                 canvas.setStrokeColor(toColor("black"))
                 canvas.setLineWidth(.75)
@@ -77,11 +101,11 @@ class ResistorElement(Element):
 
                 canvas.line(0, height_offset, canvas.width, canvas.height - height_offset)
                 canvas.line(0, canvas.height - height_offset, canvas.width, height_offset)
+        else:   
+            # Render the background, color codes, and additional details
+            self._draw_resistor_color_codes(canvas, canvas.width, canvas.height, bands)
 
-        # Render the background, color codes, and additional details
-        self._draw_resistor_color_codes(canvas, canvas.width, canvas.height, bands)
-        # self._draw_resistor_color_codes(canvas, x, y, resistor_width, resistor_height)
-        # self._draw_additional_resistor_details(canvas, x, y, resistor_width, resistor_height)
+
         canvas.restore_canvas()
 
 
@@ -97,6 +121,8 @@ class ResistorElement(Element):
 
         normalized_value *= 10 ** (significant_digit_count - 1)
         return int(normalized_value) == normalized_value
+    
+        #check if the resistor exponent exists
 
 
     def _significant_digit_count(self):
@@ -143,7 +169,7 @@ class ResistorElement(Element):
         if parameter is None:
             return None
         for num in range(-2, 10):
-            value = self.resistor_color_table(num)
+            value = ResistorElement.BAND_TABLE[num]
             if parameter_name in value and value[parameter_name] == parameter:
                 return num
         return None
@@ -174,8 +200,14 @@ class ResistorElement(Element):
         if(color_value == "wildcard"):
             self._draw_wild_resistor_band(canvas, x, y, band_width, band_height)
         else:
-            color = HexColor(self.resistor_color_table(color_value)["hex"])
-            metallic = self.resistor_color_table(color_value)["metallic"]
+            try:
+                band_data = ResistorElement.BAND_TABLE[color_value]
+            except:
+                ValueError("Invalid resistor color value: " + str(color_value))
+                return
+            
+            color = HexColor(band_data["hex"])
+            metallic = band_data["metallic"]
 
             if metallic:
                 # Metallic shine effect with gradient
@@ -194,29 +226,6 @@ class ResistorElement(Element):
             canvas.setStrokeColorRGB(0.2, 0.2, 0.2, 0.5)
             canvas.line(x, y, x, y + band_height)
             canvas.line(x + band_width, y, x + band_width, y + band_height)
-
-
-    @staticmethod
-    def resistor_color_table(num: int):
-        color_table = {
-            -2: {"hex": "#C0C0C0", "name": "silver", "metallic": True, "tolerance_percent": 10.0},
-            -1: {"hex": "#FFD700", "name": "gold",   "metallic": True, "tolerance_percent": 5.0},
-            0:  {"hex": "#000000", "name": "black",  "metallic": False, "tolerance_percent": 20.0, "temperature_coefficient": 250},
-            1:  {"hex": "#964B00", "name": "brown",  "metallic": False, "tolerance_percent": 1.0, "temperature_coefficient": 100},
-            2:  {"hex": "#FF3030", "name": "red",    "metallic": False, "tolerance_percent": 2.0, "temperature_coefficient": 50},
-            3:  {"hex": "#FFA500", "name": "orange", "metallic": False, "tolerance_percent": 3.0, "temperature_coefficient": 15},
-            4:  {"hex": "#FFFF00", "name": "yellow", "metallic": False, "tolerance_percent": 4.0, "temperature_coefficient": 25},
-            5:  {"hex": "#00FF00", "name": "green",  "metallic": False, "tolerance_percent": .5, "temperature_coefficient": 20},
-            6:  {"hex": "#0000FF", "name": "blue",   "metallic": False, "tolerance_percent": .25, "temperature_coefficient": 10},
-            7:  {"hex": "#C520F6", "name": "violet", "metallic": False, "tolerance_percent": .1, "temperature_coefficient": 5},
-            8:  {"hex": "#808080", "name": "grey",   "metallic": False, "tolerance_percent": .05, "temperature_coefficient": 1},
-            9:  {"hex": "#FFFFFF", "name": "white",  "metallic": False}
-        }
-
-        if num in color_table:
-            return color_table[num]
-        else:
-            raise ValueError("Invalid resistor color code value")
 
 
 

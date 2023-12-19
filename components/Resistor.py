@@ -3,6 +3,10 @@ from Logger import Logger
 from components import Component
 
 class Resistor(Component):
+    _attributes = {
+        
+    }
+
     LABEL_CLASS = "ResistorLabel"  # Default label class
     UNIT = "\u2126"           # Unit of the component (e.g., Ohm, Farad)
     schematic_symbol = None  # Schematic symbol of the component
@@ -45,45 +49,55 @@ class Resistor(Component):
         169: "23", 301: "47", 536: "71", 953: "95",
         174: "24", 309: "48", 549: "72", 976: "96",
         }
-
-    def __init__(self, value=None):
-        super().__init__(value)  # Call the parent constructor
-
-        self.resistance = value  # Resistance value in ohms
-
-        #calculate coefficient and exponent
-
-
-    def _normalize_resistance(self, significant_digits):
-        exponent = 0
-        normalized_value = self.value
-        while normalized_value >= 10:
-            normalized_value /= 10
-            exponent += 1
-        while normalized_value < 1:
-            normalized_value *= 10
-            exponent -= 1
-        normalized_value = round(normalized_value, significant_digits - 1)
-        return normalized_value, exponent
-
-    def get_smd_3_digit_code(self):
-        normalized_value, exponent = self._normalize_resistance(2)
-        return f"{int(normalized_value):02d}{exponent}"
-
-    def get_smd_4_digit_code(self):
-        normalized_value, exponent = self._normalize_resistance(3)
-        return f"{int(normalized_value * 10):03d}{exponent}"
     
 
+
+    def get_smd_3_digit_code(self):
+        return self.get_smd_marking_code(3)
+
+    def get_smd_4_digit_code(self):
+        return self.get_smd_marking_code(4)
+    
+    def get_smd_marking_code(self, digit_count):
+        formatted_value = ""
+        
+        if self.value == int(self.value) and self.value < 10 ^ (digit_count-1):
+            formatted_value = f"{int(self.value)}0"
+        else:
+
+            significant_value_short, exponent_short = self.get_scientific_notation(self.value, digit_count-1, digit_count-1)
+            significant_value_perfect, exponent_perfect = self.get_scientific_notation(self.value, digit_count, digit_count)
+            
+            # print(f"Value: {self.value} - {significant_value_short} - {significant_value_perfect} - {exponent_short} - {exponent_perfect}")
+
+                # If the exponent is negative, the integer portion of the value is less than the digit count
+            if exponent_perfect < 0:
+                # Before trying to format, check to see if the short exponent is 0.  If so, show short value plus a 0 on the end
+                
+                
+                if exponent_short == 0:
+                    formatted_value = f"{int(significant_value_short)}0"
+                else:
+                    formatted_value  = f"{int(significant_value_short)}"
+                    # Insert the R in the position it belongs, relative to the exponent
+                    # This would be calculated by determing the last position of the full string (digit_count) + the exponent (which will be negative)
+                    if exponent_perfect < 0:
+                        position = digit_count + exponent_perfect
+                        formatted_value = formatted_value[:position] + "R" + formatted_value[position:] 
+            else:
+
+                formatted_value = f"{int(significant_value_short)}"
+                formatted_value += str(exponent_short)
+
+        return formatted_value.zfill(digit_count)
+        
+
+
     def get_eia96_code(self):
-        significant_digits, multiplier_band = self.calculate_significant_digits_and_multiplier(self.value, 3)
-
-        # Convert significant digits to a single value as required by EIA-96 coding table
-        # For example, if significant_digits is [1, 0], convert it to 10
-        significant_value = int("".join(map(str, significant_digits)))
-
-        # Debugging: Check the type and value of significant_value and multiplier_band
-        Logger.debug(f"Significant value: {significant_value}, Multiplier band: {multiplier_band}")
+        if self.value == 0:
+            return "000"
+        # write value in scientific notation
+        significant_value, multiplier_band = self.get_scientific_notation(self.value, 3, 3)
 
         # Check if the significant value exists in the EIA-96 table
         if significant_value not in self.EIA96_CODING_TABLE:
@@ -112,19 +126,7 @@ class Resistor(Component):
     
     @staticmethod
     def calculate_significant_digits_and_multiplier(resistor_value, significant_digit_count):
-        # Convert to scientific notation
-        if resistor_value == 0:
-            normalized_value = 0
-            exponent = 0
-        else:
-            normalized_value = resistor_value
-            exponent = 0
-            while normalized_value >= 10:
-                normalized_value /= 10
-                exponent += 1
-            while normalized_value < 1:
-                normalized_value *= 10
-                exponent -= 1
+        normalized_value, exponent = Resistor._normalize_resistance(resistor_value, significant_digit_count)
 
         # Shift the decimal point to get the right number of significant digits
         shift = significant_digit_count - 1
@@ -138,3 +140,17 @@ class Resistor(Component):
         multiplier_band = exponent
 
         return significant_digits, multiplier_band
+
+
+    @staticmethod
+    def _normalize_resistance(value, significant_digits):
+        exponent = 0
+        normalized_value = value
+        while normalized_value >= 10:
+            normalized_value /= 10
+            exponent += 1
+        while normalized_value < 1:
+            normalized_value *= 10
+            exponent -= 1
+        normalized_value = round(normalized_value, significant_digits - 1)
+        return normalized_value, exponent
