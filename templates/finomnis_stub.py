@@ -21,20 +21,14 @@ class FinomnisStub(Template):
 
 
         self.add_child(
-            TextElement(str(self.component.formatted_coefficient) + self.component.unit_prefix)
+            TextElement(str(self.component.formatted_coefficient) + self.component.unit_prefix +  "<font size=70%> " +self.component.UNIT + "</font>")
             .set_position(.5 * cell_x, .5 * cell_y)
-            .set_size(7.5 * cell_x, 3.5 * cell_y)
-            .set_alignment("right", "bottom")
-            .configure(auto_truncate = False, wrap = False, font_size = 22)
+            .set_size(9.25 * cell_x, 3.5 * cell_y)
+            .set_alignment("center", "middle")
+            .configure(wrap = False, font_size = 22)
         )
 
-        self.add_child(
-            TextElement(self.component.UNIT)
-            .set_position(7.75 * cell_x, .6 * cell_y)
-            .set_size(2 * cell_x, 2 * cell_y)
-            .set_alignment("center", "bottom")
-            .configure(auto_truncate = True, wrap = False, font_size = 15)
-        )
+
 
         self.add_child(
             ResistorElement(self.component.value)

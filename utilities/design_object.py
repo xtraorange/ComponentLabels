@@ -21,6 +21,8 @@ class DesignObject(TypedAttributes):
 
             'horizontal_align': (str, "left"),
             'vertical_align': (str, "top"),
+
+            'border_check': (bool, False),
         }
 
 
@@ -80,6 +82,11 @@ class DesignObject(TypedAttributes):
         return self.set_attribute(**kwargs)
 
 
+    def debug(self):
+        self.border_check = True
+        return self
+
+
         
 
     def add_child(self, child):
@@ -90,6 +97,11 @@ class DesignObject(TypedAttributes):
 
 
     def render(self, canvas):
+        if self.border_check:
+            self.draw_outline = True
+            self.outline_color = "red"
+            self.outline_width = .5
+        
         canvas.create_sub_canvas(self.x, self.y, self.width, self.height, self.shape, self.radius, self.allow_overflow, self.rotation_angle, self.draw_outline, self.outline_color, self.outline_width, self.background_color)
         
         self._pre_render(canvas)
