@@ -1,4 +1,5 @@
 from Logger import Logger
+import inspect
 
 
 class TypedAttributes:

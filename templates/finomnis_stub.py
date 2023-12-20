@@ -13,6 +13,9 @@ class FinomnisStub(Template):
 
 
     def _configure_elements(self, canvas):
+        if self.component is None:
+            return
+
         cell_x = self.cell_size_x
         cell_y = self.cell_size_y
 

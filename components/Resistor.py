@@ -61,31 +61,39 @@ class Resistor(Component):
     def get_smd_marking_code(self, digit_count):
         formatted_value = ""
         
+        if self.value is None:
+            return formatted_value
+        
+
         if self.value == int(self.value) and self.value < 10 ^ (digit_count-1):
             formatted_value = f"{int(self.value)}0"
         else:
-
             significant_value_short, exponent_short = self.get_scientific_notation(self.value, digit_count-1, digit_count-1)
             significant_value_perfect, exponent_perfect = self.get_scientific_notation(self.value, digit_count, digit_count)
             
-            # print(f"Value: {self.value} - {significant_value_short} - {significant_value_perfect} - {exponent_short} - {exponent_perfect}")
+            if self.value < 100:
+                exponent = exponent_short
+                value = significant_value_short
+                while exponent < 0:
+                    value /= 10
+                    exponent += 1
+                position = digit_count + exponent_short
+                
+                formatted_value = str(value)
 
-                # If the exponent is negative, the integer portion of the value is less than the digit count
-            if exponent_perfect < 0:
-                # Before trying to format, check to see if the short exponent is 0.  If so, show short value plus a 0 on the end
-                
-                
-                if exponent_short == 0:
-                    formatted_value = f"{int(significant_value_short)}0"
-                else:
-                    formatted_value  = f"{int(significant_value_short)}"
-                    # Insert the R in the position it belongs, relative to the exponent
-                    # This would be calculated by determing the last position of the full string (digit_count) + the exponent (which will be negative)
-                    if exponent_perfect < 0:
-                        position = digit_count + exponent_perfect
-                        formatted_value = formatted_value[:position] + "R" + formatted_value[position:] 
+                if len(formatted_value) > digit_count:
+                    formatted_value = formatted_value.lstrip('0')
+                print(formatted_value)
+                formatted_value = formatted_value.replace(".", "R")
+                print(formatted_value)
+                formatted_value = formatted_value + "0" * digit_count
+                # formatted_value = formatted_value.zfill(digit_count)
+                print(formatted_value)
+                formatted_value = formatted_value[:digit_count]
+                print(formatted_value)
+            elif exponent_perfect == 0:
+                formatted_value = f"{int(significant_value_short)}0"
             else:
-
                 formatted_value = f"{int(significant_value_short)}"
                 formatted_value += str(exponent_short)
 

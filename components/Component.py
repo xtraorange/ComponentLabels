@@ -145,7 +145,7 @@ class Component(TypedAttributes):
 
     @staticmethod
     def get_scientific_notation(value, significant_digits, digits_left_of_decimal = 1):
-        if value == 0:
+        if value is None or value == 0:
             return 0, 0
 
         exponent = 0

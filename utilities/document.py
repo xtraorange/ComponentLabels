@@ -56,6 +56,13 @@ class Document (TypedAttributes):
         else:
             self._add_label_to_next_available_spot(template)
 
+    def add_labels(self, templates):
+        if not isinstance(templates, list) or templates is None:
+            return
+      
+        for template in templates:
+            self.add_label(template)
+
     def _add_label_to_next_available_spot(self, template):
         for i, label in enumerate(self.labels):
             if label is None:

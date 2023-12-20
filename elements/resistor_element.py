@@ -113,6 +113,9 @@ class ResistorElement(Element):
         """
         Check if the resistor value can be represented with the given number of significant figures.
         """
+        if resistor_value is None:
+            return False
+
         normalized_value = resistor_value
         while normalized_value >= 10:
             normalized_value /= 10
@@ -318,3 +321,4 @@ class ResistorElement(Element):
             # Draw an X from corner to corner
             canvas.line(x, y, x + band_width, y + band_height)
             canvas.line(x + band_width, y, x, y + band_height)
+
