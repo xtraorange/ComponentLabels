@@ -7,7 +7,6 @@ class Resistor(Component):
         
     }
 
-    LABEL_CLASS = "ResistorLabel"  # Default label class
     UNIT = "\u2126"           # Unit of the component (e.g., Ohm, Farad)
     schematic_symbol = None  # Schematic symbol of the component
     NAME = "Resistor"

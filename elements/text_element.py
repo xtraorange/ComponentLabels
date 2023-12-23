@@ -123,7 +123,7 @@ class TextElement(Element):
 
 
 
-
+    # TODO: This function needs to be refactored - it is too complex, and needs to be broken up
     def _determine_font_size(self, canvas, text, max_font_size=250):
         #use _create_paragraph to test font sizes for the given text
         best_font_size = None
@@ -139,7 +139,11 @@ class TextElement(Element):
                 if max_size is None:
                     font_size = font_size
                 else:
-                    font_size = max(self._get_max_font_size(self.text), font_size)
+                    new_max_size = self._get_max_font_size(self.text)
+                    if new_max_size is None:
+                        font_size = font_size
+                    else:
+                        font_size = max(new_max_size, font_size)
                 height = self._font_size_to_pixels(canvas, font_size) * 1.5
                 if paragraph.height <= height:
                     best_font_size = font_size

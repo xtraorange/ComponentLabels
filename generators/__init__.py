@@ -1,2 +1,3 @@
 from .generator import Generator
 from .finomnis_example_generator import FinomnisExampleGenerator
+from .e_series_generator import ESeriesGenerator
