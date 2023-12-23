@@ -1,7 +1,6 @@
 from components import Resistor
 from .template import Template
 from elements import TextElement, ResistorElement, LineElement
-
 class FinomnisStub(Template):
     _attributes = {
         'component': (Resistor, None),
@@ -21,7 +20,7 @@ class FinomnisStub(Template):
 
 
         self.add_child(
-            TextElement(str(self.component.formatted_coefficient) + self.component.unit_prefix +  "<font size=70%> " +self.component.UNIT + "</font>")
+            TextElement(self.component.label +  "<font size=70%> " +self.component.UNIT + "</font>")
             .set_position(.5 * cell_x, .5 * cell_y)
             .set_size(9.25 * cell_x, 3.5 * cell_y)
             .set_alignment("center", "middle")
@@ -35,7 +34,7 @@ class FinomnisStub(Template):
             .set_position(10 * cell_x, 2 * cell_y)
             .set_size(4.75 * cell_x, 1.5 * cell_y)
             .set_alignment("left")
-            .configure(body_color = "tan", band_count = 4, unrepresentable_behavior = "draw_x")
+            .configure(body_color = "tan", band_count = 4, unrepresentable_behavior = None)
         )
 
         self.add_child(
@@ -43,11 +42,11 @@ class FinomnisStub(Template):
             .set_position(15.25 * cell_x, 2 * cell_y)
             .set_size(4.75 * cell_x, 1.5 * cell_y)
             .set_alignment("right")
-            .configure(unrepresentable_behavior = "draw_x")
+            .configure(unrepresentable_behavior = None)
         )
 
         self.add_child(
-            TextElement(self.component.get_smd_3_digit_code())
+            TextElement(self.component.smd_3_digit_code)
             .set_position(10 * cell_x, .5 * cell_y)
             .set_size(3 * cell_x, 1 * cell_y)
             .set_alignment("left")
@@ -55,7 +54,7 @@ class FinomnisStub(Template):
         )
 
         self.add_child(
-            TextElement(self.component.get_smd_4_digit_code())
+            TextElement(self.component.smd_4_digit_code)
             .set_position(13.5 * cell_x, .5 * cell_y)
             .set_size(3 * cell_x, 1 * cell_y)
             .set_alignment("center")
@@ -63,7 +62,7 @@ class FinomnisStub(Template):
         )
 
         self.add_child(
-            TextElement(self.component.get_eia96_code())
+            TextElement(self.component.eia96_code)
             .set_position(17 * cell_x, .5 * cell_y)
             .set_size(3 * cell_x, 1 * cell_y)
             .set_alignment("right")

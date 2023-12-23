@@ -54,7 +54,6 @@ class TextElement(Element):
         paragraph.wrap(self.width, self.height)
 
 
-        print (paragraph.width, paragraph.height)
         
         x_position = 0
         if self.vertical_align == "top":

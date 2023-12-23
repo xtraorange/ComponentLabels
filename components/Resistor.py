@@ -51,62 +51,23 @@ class Resistor(Component):
         }
     
 
+    @property
+    def smd_3_digit_code(self):
+        return self._get_smd_marking_code(3)
 
-    def get_smd_3_digit_code(self):
-        return self.get_smd_marking_code(3)
-
-    def get_smd_4_digit_code(self):
-        return self.get_smd_marking_code(4)
+    @property
+    def smd_4_digit_code(self):
+        return self._get_smd_marking_code(4)
     
-    def get_smd_marking_code(self, digit_count):
-        formatted_value = ""
-        
-        if self.value is None:
-            return formatted_value
-        
-
-        if self.value == int(self.value) and self.value < 10 ^ (digit_count-1):
-            formatted_value = f"{int(self.value)}0"
-        else:
-            significant_value_short, exponent_short = self.get_scientific_notation(self.value, digit_count-1, digit_count-1)
-            significant_value_perfect, exponent_perfect = self.get_scientific_notation(self.value, digit_count, digit_count)
-            
-            if self.value < 100:
-                exponent = exponent_short
-                value = significant_value_short
-                while exponent < 0:
-                    value /= 10
-                    exponent += 1
-                position = digit_count + exponent_short
-                
-                formatted_value = str(value)
-
-                if len(formatted_value) > digit_count:
-                    formatted_value = formatted_value.lstrip('0')
-                print(formatted_value)
-                formatted_value = formatted_value.replace(".", "R")
-                print(formatted_value)
-                formatted_value = formatted_value + "0" * digit_count
-                # formatted_value = formatted_value.zfill(digit_count)
-                print(formatted_value)
-                formatted_value = formatted_value[:digit_count]
-                print(formatted_value)
-            elif exponent_perfect == 0:
-                formatted_value = f"{int(significant_value_short)}0"
-            else:
-                formatted_value = f"{int(significant_value_short)}"
-                formatted_value += str(exponent_short)
-
-        return formatted_value.zfill(digit_count)
-        
-
-
-    def get_eia96_code(self):
+    @property
+    def eia96_code(self):
         if self.value == 0:
             return "000"
         # write value in scientific notation
-        significant_value, multiplier_band = self.get_scientific_notation(self.value, 3, 3)
+        significant_value, multiplier_band = self.get_modified_notation(3, 3)
 
+        significant_value = int(significant_value)
+        
         # Check if the significant value exists in the EIA-96 table
         if significant_value not in self.EIA96_CODING_TABLE:
             Logger.warning(f"EIA-96 code not found for significant value: {significant_value}")
@@ -128,37 +89,80 @@ class Resistor(Component):
         # Append the multiplier to the digits
         multiplier = self.MULTIPLIER_TABLE[multiplier_band]
         return digits + multiplier
-
-
-
     
-    @staticmethod
-    def calculate_significant_digits_and_multiplier(resistor_value, significant_digit_count):
-        normalized_value, exponent = Resistor._normalize_resistance(resistor_value, significant_digit_count)
+    def _get_smd_marking_code(self, digit_count):
+        if self.value is None:
+            return ""
+        
+        value = self.value
 
-        # Shift the decimal point to get the right number of significant digits
-        shift = significant_digit_count - 1
-        normalized_value *= 10 ** shift
-        exponent -= shift
+        if value == 0:
+            # return a number of zeroes equal to digit count
+            return "0" * digit_count
+        
+        formatted_value = ""
+       
+        # If it uses the same number of digits, or more, of the digit count, we need to use a multiplier
+        if value >= 10 ** (digit_count-1):
+            formatted_value, exponent = self.get_modified_notation(digit_count-1, digit_count-1)
+            formatted_value = formatted_value + str(exponent)
 
-        # Get significant digits
-        significant_digits = [int(normalized_value // 10**(significant_digit_count - i - 1)) % 10 for i in range(significant_digit_count)]
+        # We know it's under 1 less the number of digits, so if it's an integer, simply add a zero (we left pad the zeros at the end)
+        elif  value == float(int(self.value)):
+            formatted_value = str(int(value)) + "0"
+        
+        # The lowest amount we can represent (other than zero) is RXXXXX1, where X is a number of zeroes equal to digit_count-2
+        elif value >= 10 ** (-(digit_count-1)):
+            # First we'll start with a normalized value
+            formatted_value = str(self.coefficient)
+            exponent = self.exponent
 
-        # The exponent is now the multiplier band value
-        multiplier_band = exponent
-
-        return significant_digits, multiplier_band
+            formatted_value, exponent = self.get_modified_notation(digit_count-1)
+            new_value = float(formatted_value) * 10 ** exponent
 
 
-    @staticmethod
-    def _normalize_resistance(value, significant_digits):
-        exponent = 0
-        normalized_value = value
-        while normalized_value >= 10:
-            normalized_value /= 10
-            exponent += 1
-        while normalized_value < 1:
-            normalized_value *= 10
-            exponent -= 1
-        normalized_value = round(normalized_value, significant_digits - 1)
-        return normalized_value, exponent
+            # These first two statements check for rounding pushing us up to one of the previous conditions
+            if(new_value >= 10 ** (digit_count-1)):
+                formatted_value, exponent = self.get_modified_notation(digit_count-1, digit_count-1)
+                formatted_value = formatted_value + str(exponent)
+            elif new_value == float(int(new_value)):
+                formatted_value = str(int(new_value)) + "0"
+            else:
+                # We know the decimal point is in the second position (1) because of scientific notation
+                decimal_point_index = 1
+
+                
+                formatted_value = formatted_value.replace('.', '')
+
+                new_decimal_point_index = decimal_point_index + exponent
+
+                while(len(formatted_value) < new_decimal_point_index + 1):
+                    formatted_value = formatted_value + "0"
+                while(new_decimal_point_index) < 0:
+                    formatted_value = "0" + formatted_value
+                    new_decimal_point_index = new_decimal_point_index + 1
+
+                # Add R into the string as the decimal point
+                formatted_value = formatted_value[:new_decimal_point_index] + "R" + formatted_value[new_decimal_point_index:]
+
+                # Strip zeroes from the end
+                formatted_value = formatted_value.rstrip('0')
+
+                if(len(formatted_value) < digit_count):
+                    formatted_value = "0" + formatted_value
+                
+                while(len(formatted_value) < digit_count):
+                    formatted_value = formatted_value + "0"
+
+        else:
+            Logger.warning(f"Value {self.value} is too small to be represented in {digit_count} digits.")
+
+        # Add zeroes to the left to make the length equal to digit_count
+        while(len(formatted_value) < digit_count):
+            formatted_value = "0" + formatted_value
+
+        return formatted_value   
+
+
+
+

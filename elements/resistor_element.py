@@ -7,7 +7,7 @@ from .element import Element
 
 class ResistorElement(Element):
     _attributes = {
-        'resistor_value': (float, 0),
+        'resistor': (Resistor, 0),
         'body_color': (str, "#92cce3"),
         'band_count': (int, 5),
         'tolerance_percentage': (str, "any"),
@@ -42,17 +42,17 @@ class ResistorElement(Element):
     }
 
 
-    def __init__(self, resistor_value):
+    def __init__(self, resistor):
         super().__init__()
-        self.resistor_value = resistor_value
+        self.resistor = resistor
 
 
 
 
     def _render_self(self, canvas):
 
-        if not self._is_representable(self.resistor_value, self._significant_digit_count()):
-            Logger.info(f"Resistor value {self.resistor_value} cannot be accurately represented with {self.band_count} bands.")
+        if not self._is_representable(self._band_significant_digit_count()):
+            Logger.info(f"Resistor value {self.resistor.value} cannot be accurately represented with {self.band_count} bands.")
             self._draw_resistor(canvas, [])
             return
 
@@ -109,48 +109,52 @@ class ResistorElement(Element):
         canvas.restore_canvas()
 
 
-    def _is_representable(self, resistor_value, significant_digit_count):
+    def _is_representable(self, band_count):
         """
-        Check if the resistor value can be represented with the given number of significant figures.
+        Check if the resistor value can be accurately represented with the given band count.
         """
-        if resistor_value is None:
+        if self.resistor.value is None:
             return False
 
-        normalized_value = resistor_value
-        while normalized_value >= 10:
-            normalized_value /= 10
-        while normalized_value < 1 and normalized_value != 0:
-            normalized_value *= 10
-
-        normalized_value *= 10 ** (significant_digit_count - 1)
-        return int(normalized_value) == normalized_value
-    
-        #check if the resistor exponent exists
+        # Determine the number of significant digits based on band count
+        significant_digits = 2 if band_count < 5 else 3
 
 
-    def _significant_digit_count(self):
+        if len(str(self.resistor.exponent).replace('.', '')) > significant_digits:
+            return False
+
+        return True
+
+
+
+    def _band_significant_digit_count(self):
         """
         Calculate the number of significant figures for the band count.
         """
         return 2 if self.band_count in [3, 4] else 3
 
     def _generate_bands_table(self):
-        if self.resistor_value == 0:
+        if self.resistor.value == 0:
             # A single black band in the middle for 0 ohm
             return [None, None, 0, None, None]
 
 
         # Determine the number of significant figures
-        significant_digit_count = self._significant_digit_count()
+        significant_digit_count = self._band_significant_digit_count()
 
-        # Extract significant digits and multiplier
-        significant_digits, multiplier_band = Resistor.calculate_significant_digits_and_multiplier(self.resistor_value, significant_digit_count)
+        significant_digits, multiplier_band = self.resistor.get_modified_notation(significant_digit_count, significant_digit_count)
+
+
+
 
         # Determine tolerance and temperature coefficient bands
         tolerance_band = self._find_matching_band(self.tolerance_percentage, "tolerance_percent") if self.tolerance_percentage != "any" else "wildcard"
         temperature_band = self._find_matching_band(self.temperature_coefficient, "temperature_coefficient") if self.temperature_coefficient != "any" else "wildcard"
 
+
         # Construct the bands array
+        significant_digits = [int(digit) for digit in significant_digits]
+
         bands = significant_digits + [multiplier_band]
 
         if self.band_count <= 4:
@@ -321,4 +325,3 @@ class ResistorElement(Element):
             # Draw an X from corner to corner
             canvas.line(x, y, x + band_width, y + band_height)
             canvas.line(x + band_width, y, x, y + band_height)
-

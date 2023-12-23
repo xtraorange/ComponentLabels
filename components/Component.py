@@ -1,4 +1,5 @@
 # components/Component.pyUNIT
+from decimal import Decimal
 from Logger import Logger
 from utilities import TypedAttributes
 import math
@@ -7,14 +8,14 @@ import re
 class Component(TypedAttributes):
     _attributes = {
         'value': (float, None),
-        'coefficient': (float, None),
-        'exponent': (int, None),
-        'unit_prefix': (str, ""),
         'decimal_precision': (int, 3),
         'schematic_symbol': (str, None),
         'maintain_user_input': (bool, False),
         '_title': (str, None),
         '_formatted_value': (str, None),
+        'base_unit_exponent': (int, 0),
+        '_integer_scientific_notation': (str, None),
+        '_integer_scientific_notation_value': (float, None),
     }
 
     UNIT_PREFIXES = {
@@ -39,45 +40,147 @@ class Component(TypedAttributes):
             self.value = self._parse_value(value)
         else:
             self.value = value
-        if(self.coefficient is None or self.exponent is None or self.unit_prefix is None):
-            self.set_value_attributes()
-        
-        Logger.debug(f"Component: {self.NAME} - {self.value} - {self.coefficient} - {self.exponent} - {self.unit_prefix}")
 
 
 
     @property
-    def title(self):
-        if self._title is None:
-            return self.formated_value
-        else:
-            return self._title
+    def label(self):
+        return f"{self.label_coefficient}{self.label_unit_prefix}"
+
+
+
+    @property
+    def label_coefficient(self):
+        coefficient, exponent = self._calculate_label_coefficient_and_exponent()
+        return coefficient
     
-    @title.setter
-    def title(self, value):
-        self._title = value
+    @property
+    def label_exponent(self):
+        coefficient, exponent = self._calculate_label_coefficient_and_exponent()
+        return exponent
+    
+    @property
+    def label_unit_prefix(self):
+        coefficient, exponent = self._calculate_label_coefficient_and_exponent()
+        return self._get_unit_prefix(exponent)
 
 
     @property
-    def formated_value(self):
-        if self._formatted_value is None:
-            coefficient_formatted_value = "{:g}".format(self.coefficient)
-            return coefficient_formatted_value + " " + self.unit_prefix + self.UNIT
-        else:
-            return self._formatted_value
+    def scientific_notation(self):
+        # Format the value in scientific notation directly
+        sci_notation_str = "{:e}".format(self.value)
 
-    @formated_value.setter
-    def formated_value(self, value):
-        self._formatted_value = value
+        # Split into mantissa and exponent parts
+        mantissa, exponent_str = sci_notation_str.split('e')
 
+        # Remove trailing zeros from the mantissa
+        mantissa = mantissa.rstrip('0').rstrip('.')  # Remove trailing zeros and the decimal point if it's all zeros
+
+        # Reconstruct the scientific notation string
+        updated_sci_notation_str = f"{mantissa}e{exponent_str}"
+
+        return updated_sci_notation_str
+    
+    @property
+    def coefficient(self):
+        return float(self.scientific_notation.split('e')[0])
+    
+    @property
+    def exponent(self):
+        return int(self.scientific_notation.split('e')[1])
 
     @property
-    def formatted_coefficient(self):
-        formatted_value = "{:g}".format(self.coefficient)
-        return formatted_value.lstrip('0') if formatted_value != '0' else formatted_value
+    def integer_scientific_notation(self):
+        if(self.value == self._integer_scientific_notation_value):
+            return self._integer_scientific_notation
+
+        # Get the scientific notation string
+        sci_notation_str = self.scientific_notation
+
+        # Split into mantissa and exponent parts
+        mantissa, exponent_str = sci_notation_str.split('e')
+        exponent = int(exponent_str)
+
+        # Remove the decimal point from the mantissa
+        decimal_position = mantissa.find('.')
+        mantissa = mantissa.replace('.', '')
+        if decimal_position != -1:
+            exponent  = exponent + decimal_position - len(mantissa)
+
+        # Construct the integer-based scientific notation string
+        integer_sci_notation_str = f"{mantissa}e{exponent}"
+
+        self._integer_scientific_notation = integer_sci_notation_str
+        self._integer_scientific_notation_value = self.value
+
+        return integer_sci_notation_str
 
 
-        
+      
+    @property
+    def integer_coefficient(self):
+        return int(self.integer_scientific_notation.split('e')[0])
+    
+    @property
+    def integer_exponent(self):
+        return int(self.integer_scientific_notation.split('e')[1])
+
+
+
+    def get_modified_notation(self, significant_digits, digits_left_of_decimal=1):
+        mantissa = str(self.integer_coefficient)
+        exponent = self.integer_exponent
+
+
+        negative = False
+        if mantissa.find('-') != -1:
+            negative = True
+            mantissa = mantissa.replace('-', '')
+
+        if len(mantissa) > significant_digits:
+            adjustment = len(mantissa) - significant_digits
+            mantissa = mantissa[:significant_digits] + '.' + mantissa[significant_digits:]
+            mantissa = float(mantissa)
+            mantissa = round(mantissa)
+            mantissa = str(mantissa)
+            exponent = exponent + adjustment
+
+            # Rounding may have added a digit:
+            if len(mantissa) > significant_digits:
+                mantissa = mantissa[:significant_digits] + '.' + mantissa[significant_digits:]
+                mantissa = float(mantissa)
+                mantissa = round(mantissa)
+                mantissa = str(mantissa)
+                exponent = exponent + 1
+
+
+
+
+        while len(mantissa) < digits_left_of_decimal:
+            mantissa = mantissa + '0'
+            exponent = exponent - 1
+
+        if len(mantissa) > digits_left_of_decimal:
+            adjustment = len(mantissa) - digits_left_of_decimal
+            mantissa = mantissa[:digits_left_of_decimal] + '.' + mantissa[digits_left_of_decimal:]
+            exponent += adjustment
+
+        if(len(mantissa.replace(".", "")) < significant_digits):
+            # search mantissa for decimal point
+            decimal_index = mantissa.find('.')
+            if decimal_index == -1:
+                mantissa = mantissa + '.'
+            
+            while(len(mantissa.replace(".", "")) < significant_digits):
+                mantissa = mantissa + '0'
+
+        if negative:
+            mantissa = '-' + mantissa
+
+        return mantissa, exponent
+
+
+
 
     def _parse_value(self, value_str):
         # Remove leading and trailing spaces
@@ -88,52 +191,24 @@ class Component(TypedAttributes):
 
         match = re.match(r"(\d*\.?\d+)([pnumkMG]?)", value_str)
         if not match:
-            Logger.error(f"Invalid value format: {value_str}")
             raise ValueError(f"Invalid value format: {value_str}")
             
 
-        numeric_value, unit = match.groups()
-        numeric_value = float(numeric_value)
+        numeric_value_str, unit = match.groups()
+        numeric_value = Decimal(numeric_value_str)
         
         if unit in Component.UNIT_PREFIXES:
+            exponent = Component.UNIT_PREFIXES[unit]
             if self.maintain_user_input:
-                self.coefficient = numeric_value
-                self.exponent = Component.UNIT_PREFIXES[unit]
+                self.coefficient = float(numeric_value)
+                self.exponent = exponent
                 self.unit_prefix = unit
-                return numeric_value * (10 ** self.exponent)
+                return float(numeric_value * (10 ** exponent))
             else:
-                return numeric_value * (10 ** Component.UNIT_PREFIXES[unit])
+                return float(numeric_value * (10 ** exponent))
         else:
             raise ValueError(f"Invalid unit prefix: {unit}")
-            Logger.error(f"Invalid unit prefix: {unit}")
         
-
-    def set_value_attributes(self):
-        base_unit_exponent = Component.UNIT_PREFIXES.get(self.UNIT, 0)
-        
-        if self.value == 0 or self.value is None:
-            self.coefficient = 0
-            self.unit_prefix = ""
-            self.exponent = 0
-            return
-
-        # Calculate the initial exponent and temporary coefficient
-        initial_exponent = math.floor(math.log10(self.value))
-        significant_figures = round( self.value  / math.pow(10, initial_exponent - ( self.decimal_precision - 1)))
-        coefficient = significant_figures / math.pow(10, ( self.decimal_precision - 1 ))
-
-        if (initial_exponent < base_unit_exponent):
-            self.exponent = math.ceil((initial_exponent + 1) / 3) * 3	
-        else:
-            self.exponent = math.floor(initial_exponent / 3) * 3
-
-        # Round the coefficient to the desired precision
-        rounding_value = 3 if self.decimal_precision <= 3 else self.decimal_precision
-        self.coefficient = round(coefficient * math.pow(10, initial_exponent - self.exponent), rounding_value)
-
-
-        # Determine the unit prefix
-        self.unit_prefix = self._get_unit_prefix(self.exponent)
 
     def _get_unit_prefix(self, exponent):
         for unit, unit_exponent in self.UNIT_PREFIXES.items():
@@ -143,24 +218,25 @@ class Component(TypedAttributes):
         return ""
 
 
-    @staticmethod
-    def get_scientific_notation(value, significant_digits, digits_left_of_decimal = 1):
-        if value is None or value == 0:
+
+
+    def _calculate_label_coefficient_and_exponent(self):
+        if self.value == 0 or self.value is None:
             return 0, 0
 
-        exponent = 0
+        # Calculate the initial exponent
+        initial_exponent = math.floor(math.log10(abs(self.value)))
 
-        # Adjust the value to have the desired number of digits to the left of the decimal
-        while value >= 10**digits_left_of_decimal:
-            value /= 10
-            exponent += 1
-        while value < 10**(digits_left_of_decimal - 1):
-            value *= 10
-            exponent -= 1
+        # Adjust exponent to a multiple of 3 for standard unit prefixes
+        if initial_exponent >= self.base_unit_exponent:
+            exponent = 3 * math.floor((initial_exponent - self.base_unit_exponent) / 3) + self.base_unit_exponent
+        else:
+            exponent = 3 * math.ceil((initial_exponent - self.base_unit_exponent) / 3) + self.base_unit_exponent
 
-        # Round to the desired number of significant digits
-        # Calculate the number of digits after the decimal for rounding
-        digits_after_decimal = significant_digits - digits_left_of_decimal
-        coefficient = round(value, digits_after_decimal)
+        # Adjust coefficient based on the new exponent
+        coefficient = self.value / (10 ** exponent)
+
+        coefficient = "{:g}".format(coefficient)
+        coefficient = coefficient.lstrip('0') if coefficient != '0' else coefficient
 
         return coefficient, exponent
